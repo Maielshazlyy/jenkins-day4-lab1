@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', credentialsId: 'github-token', url: "${REPO_URL}"
+                git branch: 'main', credentialsId: 'jenkins-2apps', url: "${REPO_URL}"
             }
         }
         stage('Build') {
