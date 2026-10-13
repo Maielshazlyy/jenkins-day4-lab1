@@ -2,16 +2,10 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/USERNAME/REPOSITORY.git'
         IMAGE_NAME = 'hello-python'
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', credentialsId: 'github-token', url: "${REPO_URL}"
-            }
-        }
         stage('Build') {
             steps {
                 sh 'docker build -t "$IMAGE_NAME:$BUILD_NUMBER" ./jenkins-two-apps/python-app'
