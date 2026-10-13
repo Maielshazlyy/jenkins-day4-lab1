@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/USERNAME/REPOSITORY.git'
+        REPO_URL = 'https://github.com/Maielshazlyy/jenkins-day4-lab1.git'
         IMAGE_NAME = 'hello-node'
     }
 
