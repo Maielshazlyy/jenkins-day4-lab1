@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+
+    environment {
+        // Replace with your GitHub repository URL and Docker Hub username.
+        REPO_URL = 'https://github.com/USERNAME/REPOSITORY.git'
+        DOCKERHUB_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
+        NODE_IMAGE = 'hello-node'
+        PYTHON_IMAGE = 'hello-python'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', credentialsId: 'github-token', url: "${REPO_URL}"
+            }
+        }
+
+        stage('Build images') {
+            steps {
+                sh '''
+                    docker build -t "$NODE_IMAGE:$BUILD_NUMBER" ./node-app
+                    docker build -t "$PYTHON_IMAGE:$BUILD_NUMBER" ./python-app
+                '''
+            }
+        }
+
+        stage('Run apps') {
+            steps {
+                sh '''
+                    docker run --rm "$NODE_IMAGE:$BUILD_NUMBER"
+                    docker run --rm "$PYTHON_IMAGE:$BUILD_NUMBER"
+                '''
+            }
+        }
+
+        stage('Push images') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DH_USER',
+                    passwordVariable: 'DH_TOKEN'
+                )]) {
+                    sh '''
+                        echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
+                        docker tag "$NODE_IMAGE:$BUILD_NUMBER" "$DH_USER/$NODE_IMAGE:$BUILD_NUMBER"
+                        docker tag "$PYTHON_IMAGE:$BUILD_NUMBER" "$DH_USER/$PYTHON_IMAGE:$BUILD_NUMBER"
+                        docker push "$DH_USER/$NODE_IMAGE:$BUILD_NUMBER"
+                        docker push "$DH_USER/$PYTHON_IMAGE:$BUILD_NUMBER"
+                        docker logout
+                    '''
+                }
+            }
+        }
+    }
+}
