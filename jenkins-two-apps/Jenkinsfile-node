@@ -3,32 +3,56 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'hello-node'
+        APP_PORT = '3000'
     }
 
     stages {
-        stage('Build') {
+        stage('Select environment') {
             steps {
-                sh 'docker build -t "$IMAGE_NAME:$BUILD_NUMBER" ./jenkins-two-apps/node-app'
+                script {
+                    def ports = [dev: '3001', stg: '3002', prod: '3000']
+                    env.HOST_PORT = ports[env.BRANCH_NAME]
+                    if (!env.HOST_PORT) {
+                        error("Unsupported branch '${env.BRANCH_NAME}'. Use dev, stg, or prod.")
+                    }
+                    echo "Deploying Node.js ${env.BRANCH_NAME} on host port ${env.HOST_PORT}"
+                }
             }
         }
-        stage('Run') {
+
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                    docker rm -f hello-node-local >/dev/null 2>&1 || true
-                    docker run -d --name hello-node-local -p 3000:3000 "$IMAGE_NAME:$BUILD_NUMBER"
-                '''
+                sh 'docker build -t "$IMAGE_NAME:$BRANCH_NAME-$BUILD_NUMBER" ./jenkins-two-apps/node-app'
             }
         }
-        stage('Push to Docker Hub') {
+
+        stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'jenkins-2apps-dockerhub', usernameVariable: 'DH_USER', passwordVariable: 'DH_TOKEN')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'jenkins-2apps-dockerhub',
+                    usernameVariable: 'DH_USER',
+                    passwordVariable: 'DH_TOKEN'
+                )]) {
                     sh '''
                         echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
-                        docker tag "$IMAGE_NAME:$BUILD_NUMBER" "$DH_USER/$IMAGE_NAME:$BUILD_NUMBER"
-                        docker push "$DH_USER/$IMAGE_NAME:$BUILD_NUMBER"
+                        docker tag "$IMAGE_NAME:$BRANCH_NAME-$BUILD_NUMBER" "$DH_USER/$IMAGE_NAME:$BRANCH_NAME-$BUILD_NUMBER"
+                        docker push "$DH_USER/$IMAGE_NAME:$BRANCH_NAME-$BUILD_NUMBER"
                         docker logout
                     '''
                 }
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                sh '''
+                    docker rm -f "$IMAGE_NAME-$BRANCH_NAME" >/dev/null 2>&1 || true
+                    docker run -d --restart unless-stopped \
+                        --name "$IMAGE_NAME-$BRANCH_NAME" \
+                        -p "$HOST_PORT:$APP_PORT" \
+                        "$IMAGE_NAME:$BRANCH_NAME-$BUILD_NUMBER"
+                    docker ps
+                '''
             }
         }
     }
