@@ -13,7 +13,10 @@ pipeline {
         }
         stage('Run') {
             steps {
-                sh 'docker run --rm "$IMAGE_NAME:$BUILD_NUMBER"'
+                sh '''
+                    docker rm -f hello-node-local >/dev/null 2>&1 || true
+                    docker run -d --name hello-node-local -p 3000:3000 "$IMAGE_NAME:$BUILD_NUMBER"
+                '''
             }
         }
         stage('Push to Docker Hub') {
