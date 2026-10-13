@@ -18,7 +18,7 @@ pipeline {
         }
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DH_USER', passwordVariable: 'DH_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId:jenkins-2apps-dockerhub', usernameVariable: 'DH_USER', passwordVariable: 'DH_TOKEN')]) {
                     sh '''
                         echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
                         docker tag "$IMAGE_NAME:$BUILD_NUMBER" "$DH_USER/$IMAGE_NAME:$BUILD_NUMBER"
